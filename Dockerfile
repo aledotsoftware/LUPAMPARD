@@ -13,7 +13,7 @@ RUN pnpm config set minimum-release-age 0
 COPY package.json pnpm-lock.yaml ./
 
 # Instalar dependencias con congelación de versión
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Copiar el resto del código fuente
 COPY . .
