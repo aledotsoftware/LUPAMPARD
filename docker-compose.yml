@@ -1,0 +1,9 @@
+services:
+  pampa-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pampa-app
+    ports:
+      - "8080:80"
+    restart: unless-stopped
