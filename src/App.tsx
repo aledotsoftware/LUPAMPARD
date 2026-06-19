@@ -59,6 +59,7 @@ interface ReassembledFile {
   chunkStates: Map<number, ChunkState>;
 }
 
+let textDrawCounter = 0;
 
 export default function App() {
   // --- STATE VARIABLES ---
@@ -154,6 +155,7 @@ export default function App() {
   useEffect(() => {
     if (generatedFileWavUrl) {
       URL.revokeObjectURL(generatedFileWavUrl);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setGeneratedFileWavUrl(null);
     }
     if (generatedFileMp3Url) {
@@ -190,8 +192,9 @@ export default function App() {
       // Subsequent fragments: actual Base85 file data
       for (let i = 0; i < totalChunks; i++) {
         const start = i * chunkSize;
-        const end = Math.min(start + chunkSize, totalBytes);
-        const fileSlice = fileData.slice(start, end) as any;
+        const startIdx = start;
+        const end = Math.min(startIdx + chunkSize, totalBytes);
+        const fileSlice = fileData.slice(start, end);
         const b85Text = encodeBase85(fileSlice);
         const payloadBytes = new TextEncoder().encode(b85Text);
 
@@ -205,6 +208,7 @@ export default function App() {
       setFileChunks(chunks);
     };
     reader.readAsArrayBuffer(selectedFile);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFile]);
 
   // --- DRAW WAVEFORM (TRANSMITTER) ---
@@ -242,13 +246,14 @@ export default function App() {
 
   useEffect(() => {
     drawTxWaveform();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generatedSamples, isDarkMode]);
 
   // --- ACTIONS ---
 
   // Build a single frame object
   const buildFrame = (customSeqId?: number, customPayload?: Uint8Array): LU_PAMPA_Frame => {
-    let payload: any = new Uint8Array();
+    let payload: Uint8Array = new Uint8Array();
     if (customPayload) {
       payload = customPayload;
     } else {
@@ -302,14 +307,14 @@ export default function App() {
 
       setGeneratedSamples(samples);
 
-      const blob = createWavBlob(samples as any, 44100);
+      const blob = createWavBlob(samples, 44100);
       if (generatedWavUrl) {
         URL.revokeObjectURL(generatedWavUrl);
       }
       const url = URL.createObjectURL(blob);
       setGeneratedWavUrl(url);
 
-      const mp3Blob = createMp3Blob(samples as any, 44100);
+      const mp3Blob = createMp3Blob(samples, 44100);
       if (generatedMp3Url) {
         URL.revokeObjectURL(generatedMp3Url);
       }
@@ -322,8 +327,8 @@ export default function App() {
         console.log("Audio generado. Tamaño de trama:", rawFrame.length, "bytes. Bits modulated:", bits.length);
       }
       return samples;
-    } catch (err: any) {
-      alert("Error al generar audio: " + err.message);
+    } catch (err) {
+      alert("Error al generar audio: " + (err as Error).message);
       return null;
     }
   };
@@ -413,8 +418,8 @@ export default function App() {
       setGeneratedFileMp3Url(mp3Url);
 
       console.log("Ráfaga de audio generada. Total muestras:", combinedSamples.length);
-    } catch (err: any) {
-      alert("Error al generar audio de la ráfaga: " + err.message);
+    } catch (err) {
+      alert("Error al generar audio de la ráfaga: " + (err as Error).message);
     } finally {
       setIsGeneratingFileAudio(false);
     }
@@ -446,8 +451,8 @@ export default function App() {
       
       // Clean up the URL in a bit
       setTimeout(() => URL.revokeObjectURL(mp3Url), 10000);
-    } catch (err: any) {
-      alert("Error al descargar MP3 de la trama: " + err.message);
+    } catch (err) {
+      alert("Error al descargar MP3 de la trama: " + (err as Error).message);
     }
   };
 
@@ -463,7 +468,7 @@ export default function App() {
 
     // Initialize AudioContext
     if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     }
 
     const context = audioContextRef.current;
@@ -472,7 +477,7 @@ export default function App() {
     }
 
     const buffer = context.createBuffer(1, samples.length, 44100);
-    buffer.copyToChannel(samples as any, 0);
+    buffer.copyToChannel(samples as unknown as Float32Array<ArrayBuffer>, 0);
 
     const source = context.createBufferSource();
     source.buffer = buffer;
@@ -547,7 +552,9 @@ export default function App() {
     if (playSourceNodeRef.current) {
       try {
         playSourceNodeRef.current.stop();
-      } catch (e) {}
+      } catch {
+        // Ignorar si ya está detenido o no iniciado
+      }
       playSourceNodeRef.current = null;
     }
     setIsPlaying(false);
@@ -663,7 +670,7 @@ export default function App() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       micStreamRef.current = stream;
 
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       audioContextRef.current = new AudioCtx();
       const context = audioContextRef.current;
 
@@ -772,8 +779,8 @@ export default function App() {
       setMicStatusText("Escuchando...");
       drawSpectrogram();
 
-    } catch (err: any) {
-      alert("Error al iniciar micrófono: " + err.message);
+    } catch (err) {
+      alert("Error al iniciar micrófono: " + (err as Error).message);
       setMicStatusText("Error en micrófono");
     }
   };
@@ -806,7 +813,7 @@ export default function App() {
         const arrayBuffer = event.target.result as ArrayBuffer;
         
         // Use OfflineAudioContext to decode reliably on all platforms
-        const OfflineAudioCtx = window.OfflineAudioContext || (window as any).webkitOfflineAudioContext;
+        const OfflineAudioCtx = window.OfflineAudioContext || (window as unknown as { webkitOfflineAudioContext: typeof OfflineAudioContext }).webkitOfflineAudioContext;
         const tempCtx = new OfflineAudioCtx(1, 44100, 44100);
         const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
         const channelData = audioBuffer.getChannelData(0);
@@ -863,8 +870,8 @@ export default function App() {
           alert(`Decodificación exitosa: se encontraron ${packets.length} tramas.`);
           setMicStatusText(`Decodificadas ${packets.length} tramas.`);
         }
-      } catch (err: any) {
-        alert("Error al decodificar archivo de audio: " + err.message);
+      } catch (err) {
+        alert("Error al decodificar archivo de audio: " + (err as Error).message);
         setMicStatusText("Error de decodificación");
       }
     };
@@ -1070,8 +1077,8 @@ export default function App() {
       handlePlayAudio(samples);
       
       setStats((s) => ({ ...s, sent: s.sent + 1 }));
-    } catch (e: any) {
-      alert("Error al emitir solicitud NACK: " + e.message);
+    } catch (e) {
+      alert("Error al emitir solicitud NACK: " + (e as Error).message);
     }
   };
 
@@ -1125,8 +1132,8 @@ export default function App() {
       a.download = forcePartial ? `PARCIAL_${fileObj.filename}` : fileObj.filename;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (e: any) {
-      alert("Error al reensamblar el archivo: " + e.message);
+    } catch (e) {
+      alert("Error al reensamblar el archivo: " + (e as Error).message);
     }
   };
 
@@ -1139,6 +1146,9 @@ export default function App() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
+    // eslint-disable-next-line react-hooks/globals
+    textDrawCounter = (textDrawCounter + 1) % 20;
 
     const analyser = analyzerRef.current;
     const bufferLength = analyser.frequencyBinCount;
@@ -1183,7 +1193,7 @@ export default function App() {
       const x = bin * cellWidth;
       if (x < canvas.width) {
         ctx.fillRect(x, 0, 1, 4);
-        if (Math.random() < 0.05) { // draw text overlay rarely to avoid jitter
+        if (textDrawCounter === 0) { // draw text overlay rarely to avoid jitter
           ctx.fillText(`${freq / 1000}kHz`, x + 2, 8);
         }
       }
@@ -1199,6 +1209,7 @@ export default function App() {
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isListeningMic]);
 
   // Clean console
@@ -2008,7 +2019,7 @@ export default function App() {
                   const dateStr = new Date(pkt.timestamp).toLocaleTimeString();
                   
                   // Convert payload to printable string
-                  let payloadText = "";
+                  let payloadText: string;
                   if (frame.tipo === FrameType.TOKEN) {
                     const id = (frame.payload[0] << 8) | frame.payload[1];
                     payloadText = `TOKEN ID: ${id}`;

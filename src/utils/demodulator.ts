@@ -148,7 +148,7 @@ export function extractPackets(
       
       if (isSync) {
         // Preamble flag continuation filtering
-        let nextByteIsSync = true;
+        let nextByteIsSync = false;
         if (bitIdx + 16 <= decodedBits.length) {
           nextByteIsSync = true;
           for (let p = 0; p < 8; p++) {
@@ -157,8 +157,6 @@ export function extractPackets(
               break;
             }
           }
-        } else {
-          nextByteIsSync = false;
         }
 
         if (nextByteIsSync) {

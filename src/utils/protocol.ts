@@ -125,7 +125,7 @@ export function serializeFrame(frame: LU_PAMPA_Frame): Uint8Array {
   // Calculated over the buffer up to this point (SYNC to end of PAYLOAD)
   const calculatedCrc = crc16(buffer.slice(0, offset));
   buffer[offset++] = (calculatedCrc >> 8) & 0xFF;
-  buffer[offset++] = calculatedCrc & 0xFF;
+  buffer[offset] = calculatedCrc & 0xFF;
 
   // 12. FEC Reed-Solomon (~25% of preFecSize)
   const nsym = getFECSize(preFecSize);

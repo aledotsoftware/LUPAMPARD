@@ -142,12 +142,12 @@ export function downloadFramePdf(frame: LU_PAMPA_Frame, options: {
   doc.setFontSize(9);
   
   // Convert payload to text or hex representation
-  let asciiText = "";
+  let asciiText: string;
   try {
-    asciiText = new TextDecoder().decode(frame.payload);
+    const decoded = new TextDecoder().decode(frame.payload);
     // Replace non-printable characters
-    asciiText = asciiText.replace(/[^\x20-\x7E\n]/g, ".");
-  } catch (e) {
+    asciiText = decoded.replace(/[^\x20-\x7E\n]/g, ".");
+  } catch {
     asciiText = "[Datos Binarios]";
   }
   

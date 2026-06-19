@@ -1,7 +1,14 @@
 // LU-PAMPA V8 AFSK Modulator
 import { SYNC_BYTE } from "./protocol";
-// @ts-ignore
+// @ts-expect-error - lamejs has no official typings
 import lamejs from "./lame.min.js";
+
+interface LameJS {
+  Mp3Encoder: new (channels: number, samplerate: number, kbps: number) => {
+    encodeBuffer: (buffer: Int16Array) => Int8Array;
+    flush: () => Int8Array;
+  };
+}
 
 
 export interface ModulationOptions {
@@ -210,8 +217,8 @@ export function createMp3Blob(samples: Float32Array, sampleRate: number): Blob {
   }
 
   // Create MP3 encoder: 1 channel (mono), sample rate, 128 kbps
-  const mp3encoder = new (lamejs as any).Mp3Encoder(1, sampleRate, 128);
-  const mp3Data: any[] = [];
+  const mp3encoder = new (lamejs as unknown as LameJS).Mp3Encoder(1, sampleRate, 128);
+  const mp3Data: Int8Array[] = [];
 
   // Encode buffer
   const mp3Tmp = mp3encoder.encodeBuffer(samples16);
@@ -225,6 +232,6 @@ export function createMp3Blob(samples: Float32Array, sampleRate: number): Blob {
     mp3Data.push(mp3Flush);
   }
 
-  return new Blob(mp3Data, { type: 'audio/mp3' });
+  return new Blob(mp3Data as unknown as BlobPart[], { type: 'audio/mp3' });
 }
 
