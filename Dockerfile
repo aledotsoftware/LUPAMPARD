@@ -24,10 +24,13 @@ RUN pnpm run build
 # Etapa 2: Servidor Web de Producción
 FROM nginx:alpine
 
+# Copiar la plantilla de configuración de Nginx para soportar puerto dinámico
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+
 # Copiar la compilación estática al directorio de nginx
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Exponer el puerto estándar HTTP
-EXPOSE 80
+# Exponer los puertos posibles
+EXPOSE 80 3000
 
 CMD ["nginx", "-g", "daemon off;"]
