@@ -6,6 +6,9 @@ WORKDIR /app
 # Habilitar corepack para usar pnpm de forma nativa
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
+# Desactivar verificación de antigüedad de publicación de paquetes
+RUN pnpm config set minimum-release-age 0
+
 # Copiar archivos de dependencias
 COPY package.json pnpm-lock.yaml ./
 
