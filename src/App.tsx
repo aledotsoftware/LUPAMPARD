@@ -734,7 +734,9 @@ export default function App() {
       source.connect(processor);
       processor.connect(context.destination);
 
-      let bufferPool = new Float32Array(0);
+      let rawAudioBuffer = new Float32Array(0);
+      let diffPool = new Float32Array(0);
+      let silenceSamples = 0;
 
       processor.onaudioprocess = (e) => {
         const inputData = e.inputBuffer.getChannelData(0);
@@ -747,32 +749,51 @@ export default function App() {
         const rms = Math.sqrt(sumSquare / inputData.length);
 
         if (rms < squelch) {
-          // Input is silent noise, flush buffer and skip processing
-          bufferPool = new Float32Array(0);
+          silenceSamples += inputData.length;
+          // If silent for more than 1.2 seconds, clear the buffer pools
+          if (silenceSamples > context.sampleRate * 1.2) {
+            diffPool = new Float32Array(0);
+            rawAudioBuffer = new Float32Array(0);
+          }
           return;
         }
 
-        // Append new samples to our processing pool
-        const newPool = new Float32Array(bufferPool.length + inputData.length);
-        newPool.set(bufferPool);
-        newPool.set(inputData, bufferPool.length);
-        bufferPool = newPool;
+        silenceSamples = 0;
 
-        // Keep buffer pool to max 2 seconds to prevent memory overflow
-        const maxBufferLength = context.sampleRate * 2;
-        if (bufferPool.length > maxBufferLength) {
-          bufferPool = bufferPool.slice(bufferPool.length - maxBufferLength);
+        // Process audio samples using matched-filter overlap FSK demodulation
+        const samplesPerBit = Math.round(context.sampleRate / baudRate);
+        const demodInput = new Float32Array(rawAudioBuffer.length + inputData.length);
+        demodInput.set(rawAudioBuffer);
+        demodInput.set(inputData, rawAudioBuffer.length);
+        
+        // Save overlap tail for next run
+        if (demodInput.length >= samplesPerBit) {
+          rawAudioBuffer = demodInput.slice(demodInput.length - samplesPerBit);
+        } else {
+          rawAudioBuffer = demodInput;
         }
 
-        // Run AFSK Demodulator on buffer pool
         const demodOptions = {
           baudRate,
           sampleRate: context.sampleRate,
           useNRZI
         };
 
-        const diff = demodulateFSK(bufferPool, demodOptions);
-        const packets = extractPackets(diff, demodOptions);
+        const diffNew = demodulateFSK(demodInput, demodOptions);
+        const newDiffSamples = diffNew.slice(diffNew.length - inputData.length);
+
+        const newDiffPool = new Float32Array(diffPool.length + newDiffSamples.length);
+        newDiffPool.set(diffPool);
+        newDiffPool.set(newDiffSamples, diffPool.length);
+        diffPool = newDiffPool;
+
+        // Keep buffer pool to max 12 seconds to prevent memory overflow
+        const maxBufferLength = context.sampleRate * 12;
+        if (diffPool.length > maxBufferLength) {
+          diffPool = diffPool.slice(diffPool.length - maxBufferLength);
+        }
+
+        const packets = extractPackets(diffPool, demodOptions);
 
         if (packets.length > 0) {
           // Process newly found packets
@@ -826,7 +847,8 @@ export default function App() {
           });
 
           // Clear buffer pool after successful reads to prevent duplicate scans
-          bufferPool = new Float32Array(0);
+          diffPool = new Float32Array(0);
+          rawAudioBuffer = new Float32Array(0);
         }
       };
 
