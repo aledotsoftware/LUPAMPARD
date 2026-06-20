@@ -61,6 +61,42 @@ interface ReassembledFile {
 
 let textDrawCounter = 0;
 
+const WATERFALL_LUT = (() => {
+  const lut = new Array(256);
+  for (let i = 0; i < 256; i++) {
+    const percent = i / 255;
+    let r = 0, g = 0, b = 0;
+    if (percent < 0.25) {
+      // Black to Blue
+      const t = percent / 0.25;
+      b = Math.floor(t * 255);
+    } else if (percent < 0.5) {
+      // Blue to Green/Cyan
+      const t = (percent - 0.25) / 0.25;
+      g = Math.floor(t * 255);
+      b = Math.floor((1 - t) * 255);
+    } else if (percent < 0.75) {
+      // Green/Cyan to Yellow
+      const t = (percent - 0.5) / 0.25;
+      r = Math.floor(t * 255);
+      g = 255;
+    } else if (percent < 0.9) {
+      // Yellow to Red
+      const t = (percent - 0.75) / 0.15;
+      r = 255;
+      g = Math.floor((1 - t) * 255);
+    } else {
+      // Red to White
+      const t = (percent - 0.9) / 0.1;
+      r = 255;
+      g = Math.floor(t * 255);
+      b = Math.floor(t * 255);
+    }
+    lut[i] = `rgb(${r},${g},${b})`;
+  }
+  return lut;
+})();
+
 export default function App() {
   // --- STATE VARIABLES ---
   
@@ -1170,13 +1206,7 @@ export default function App() {
     const cellWidth = canvas.width / (bufferLength * 0.4); // Zoom in on low frequencies (up to 4000Hz)
     for (let i = 0; i < bufferLength * 0.4; i++) {
       const value = dataArray[i];
-      // Map to blue-purple gradient
-      const percent = value / 255;
-      const r = Math.floor(percent * 120 + 20);
-      const g = Math.floor(percent * 40);
-      const b = Math.floor(percent * 240 + 50);
-
-      ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+      ctx.fillStyle = WATERFALL_LUT[value];
       ctx.fillRect(i * cellWidth, 0, cellWidth + 1, 1);
     }
 
