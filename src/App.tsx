@@ -703,7 +703,14 @@ export default function App() {
 
     try {
       setMicStatusText("Iniciando micrófono...");
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        },
+        video: false
+      });
       micStreamRef.current = stream;
 
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -750,7 +757,7 @@ export default function App() {
         bufferPool = newPool;
 
         // Keep buffer pool to max 2 seconds to prevent memory overflow
-        const maxBufferLength = 44100 * 2;
+        const maxBufferLength = context.sampleRate * 2;
         if (bufferPool.length > maxBufferLength) {
           bufferPool = bufferPool.slice(bufferPool.length - maxBufferLength);
         }
