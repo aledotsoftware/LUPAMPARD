@@ -8,9 +8,10 @@ export interface DemodulationOptions {
 }
 
 export interface DemodulatedPacket {
-  result: DeserializationResult;
+  result: DeserializationResult | null;
   rawBytes: Uint8Array;
   timestamp: number;
+  rsFailed?: boolean;
 }
 
 /**
@@ -253,6 +254,17 @@ export function extractPackets(
               });
             }
             // Skip past the decoded packet bits in our bit scan
+            bitIdx += dataBitIdx - bitIdx - 8;
+          } else {
+            // RS decoding failed, but Sync was valid. Return it as a corrupted raw packet.
+            const key = `corrupt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+            packetsMap.set(key, {
+              result: null,
+              rawBytes,
+              timestamp: Date.now(),
+              rsFailed: true
+            });
+            // Skip past the packet bits in our bit scan
             bitIdx += dataBitIdx - bitIdx - 8;
           }
         }

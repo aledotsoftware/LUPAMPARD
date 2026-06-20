@@ -464,7 +464,6 @@ export default function App() {
   // Generate and download MP3 audio for a specific received frame
   const handleDownloadPacketMp3 = (pkt: DemodulatedPacket) => {
     try {
-      const { frame } = pkt.result;
       const options: ModulationOptions = {
         baudRate, // uses current baudRate
         sampleRate: 44100,
@@ -473,8 +472,8 @@ export default function App() {
         useNRZI
       };
 
-      const rawFrame = serializeFrame(frame);
-      const bits = bytesToBits(rawFrame, options);
+      const rawBytes = pkt.result ? serializeFrame(pkt.result.frame) : pkt.rawBytes;
+      const bits = bytesToBits(rawBytes, options);
       const samples = modulateBits(bits, options);
 
       const mp3Blob = createMp3Blob(samples, 44100);
@@ -482,7 +481,10 @@ export default function App() {
 
       const a = document.createElement("a");
       a.href = mp3Url;
-      a.download = `pampa_v8_rx_${frame.origenLicencia}_sec${frame.secuenciaId}.mp3`;
+      const fileName = pkt.result
+        ? `pampa_v8_rx_${pkt.result.frame.origenLicencia}_sec${pkt.result.frame.secuenciaId}.mp3`
+        : `pampa_v8_rx_corrupt_${pkt.timestamp}.mp3`;
+      a.download = fileName;
       a.click();
       
       // Clean up the URL in a bit
@@ -777,37 +779,47 @@ export default function App() {
           packets.forEach((packet) => {
             // Avoid duplicates (if packet CRC is correct and timestamp is close)
             setReceivedPackets((prev) => {
-              const duplicate = prev.some(
-                (p) =>
-                  p.result.frame.origenLicencia === packet.result.frame.origenLicencia &&
-                  p.result.frame.secuenciaId === packet.result.frame.secuenciaId &&
-                  p.result.frame.archivoId === packet.result.frame.archivoId &&
-                  Math.abs(p.timestamp - packet.timestamp) < 2000
-              );
+              const duplicate = prev.some((p) => {
+                if (p.result && packet.result) {
+                  return (
+                    p.result.frame.origenLicencia === packet.result.frame.origenLicencia &&
+                    p.result.frame.secuenciaId === packet.result.frame.secuenciaId &&
+                    p.result.frame.archivoId === packet.result.frame.archivoId &&
+                    Math.abs(p.timestamp - packet.timestamp) < 2000
+                  );
+                } else if (!p.result && !packet.result) {
+                  // For corrupted/raw packets, check if raw bytes are identical and close in time
+                  const sameBytes = p.rawBytes.length === packet.rawBytes.length &&
+                    p.rawBytes.every((v, i) => v === packet.rawBytes[i]);
+                  return sameBytes && Math.abs(p.timestamp - packet.timestamp) < 2000;
+                }
+                return false;
+              });
               if (duplicate) return prev;
               
               // Increment statistics
               setStats((s) => ({
                 ...s,
                 received: s.received + 1,
-                fecCorrected: s.fecCorrected + (packet.result.fecCorrected ? 1 : 0),
-                crcFailed: s.crcFailed + (packet.result.crcValid ? 0 : 1)
+                fecCorrected: s.fecCorrected + (packet.result ? (packet.result.fecCorrected ? 1 : 0) : 0),
+                crcFailed: s.crcFailed + (packet.result ? (packet.result.crcValid ? 0 : 1) : 1)
               }));
 
-              // Handle File Chunk assembly
-              if (packet.result.frame.tipo === FrameType.FRAGMENTO) {
-                handleIncomingFileChunk(
-                  packet.result.frame,
-                  packet.result.fecCorrected,
-                  packet.result.errorsCorrected
-                );
-              }
+              if (packet.result) {
+                // Handle File Chunk assembly
+                if (packet.result.frame.tipo === FrameType.FRAGMENTO) {
+                  handleIncomingFileChunk(
+                    packet.result.frame,
+                    packet.result.fecCorrected,
+                    packet.result.errorsCorrected
+                  );
+                }
 
-              // Handle ACK / NACK feedback
-              if (packet.result.frame.tipo === FrameType.ACK) {
-                handleIncomingAck(packet.result.frame);
+                // Handle ACK / NACK feedback
+                if (packet.result.frame.tipo === FrameType.ACK) {
+                  handleIncomingAck(packet.result.frame);
+                }
               }
-
 
               return [packet, ...prev].slice(0, 100); // Keep last 100 packets
             });
@@ -879,33 +891,44 @@ export default function App() {
           packets.forEach((packet) => {
             setReceivedPackets((prev) => {
               // Check duplicate
-              const duplicate = prev.some(
-                (p) =>
-                  p.result.frame.origenLicencia === packet.result.frame.origenLicencia &&
-                  p.result.frame.secuenciaId === packet.result.frame.secuenciaId &&
-                  p.result.frame.archivoId === packet.result.frame.archivoId
-              );
+              const duplicate = prev.some((p) => {
+                if (p.result && packet.result) {
+                  return (
+                    p.result.frame.origenLicencia === packet.result.frame.origenLicencia &&
+                    p.result.frame.secuenciaId === packet.result.frame.secuenciaId &&
+                    p.result.frame.archivoId === packet.result.frame.archivoId
+                  );
+                } else if (!p.result && !packet.result) {
+                  // For corrupted/raw packets, check if raw bytes are identical
+                  return (
+                    p.rawBytes.length === packet.rawBytes.length &&
+                    p.rawBytes.every((v, i) => v === packet.rawBytes[i])
+                  );
+                }
+                return false;
+              });
               if (duplicate) return prev;
 
               setStats((s) => ({
                 ...s,
                 received: s.received + 1,
-                fecCorrected: s.fecCorrected + (packet.result.fecCorrected ? 1 : 0),
-                crcFailed: s.crcFailed + (packet.result.crcValid ? 0 : 1)
+                fecCorrected: s.fecCorrected + (packet.result ? (packet.result.fecCorrected ? 1 : 0) : 0),
+                crcFailed: s.crcFailed + (packet.result ? (packet.result.crcValid ? 0 : 1) : 1)
               }));
 
-              if (packet.result.frame.tipo === FrameType.FRAGMENTO) {
-                handleIncomingFileChunk(
-                  packet.result.frame,
-                  packet.result.fecCorrected,
-                  packet.result.errorsCorrected
-                );
-              }
+              if (packet.result) {
+                if (packet.result.frame.tipo === FrameType.FRAGMENTO) {
+                  handleIncomingFileChunk(
+                    packet.result.frame,
+                    packet.result.fecCorrected,
+                    packet.result.errorsCorrected
+                  );
+                }
 
-              if (packet.result.frame.tipo === FrameType.ACK) {
-                handleIncomingAck(packet.result.frame);
+                if (packet.result.frame.tipo === FrameType.ACK) {
+                  handleIncomingAck(packet.result.frame);
+                }
               }
-
 
               return [packet, ...prev];
             });
@@ -2052,8 +2075,102 @@ export default function App() {
                 </div>
               ) : (
                 receivedPackets.map((pkt, idx) => {
-                  const { frame, fecCorrected, errorsCorrected, crcValid } = pkt.result;
                   const dateStr = new Date(pkt.timestamp).toLocaleTimeString();
+                  
+                  if (!pkt.result) {
+                    // Reed-Solomon failed: totalmente corrupto.
+                    // Extraemos cabeceras del rawBytes directamente
+                    const raw = pkt.rawBytes;
+                    
+                    // Helper simple para parsear callsign sin error correction
+                    const parseCallsignDirect = (arr: Uint8Array, start: number) => {
+                      let str = "";
+                      for (let i = 0; i < 7; i++) {
+                        str += String.fromCharCode(arr[start + i] || 32);
+                      }
+                      return str.trim().toUpperCase();
+                    };
+                    
+                    const origenLic = raw.length > 8 ? parseCallsignDirect(raw, 1) : "???";
+                    const origenNod = raw.length > 10 ? (raw[8] << 8) | raw[9] : 0;
+                    const destLic = raw.length > 17 ? parseCallsignDirect(raw, 10) : "???";
+                    const destNod = raw.length > 19 ? (raw[17] << 8) | raw[18] : 0;
+                    
+                    const archId = raw.length > 19 ? raw[19] : 0;
+                    const secId = raw.length > 22 ? (raw[21] << 8) | raw[22] : 0;
+                    const tipo = raw.length > 23 ? raw[23] : 0;
+                    const payloadLen = raw.length > 24 ? raw[24] : 0;
+                    
+                    // Extract payload raw bytes
+                    const rawPayload = raw.length > 25 
+                      ? raw.slice(25, Math.min(25 + payloadLen, raw.length - 2)) 
+                      : new Uint8Array(0);
+                      
+                    let rawPayloadText: string;
+                    try {
+                      rawPayloadText = new TextDecoder().decode(rawPayload).replace(/[^\x20-\x7E\n]/g, ".");
+                    } catch {
+                      rawPayloadText = "[Datos Binarios Corruptos]";
+                    }
+                    
+                    // Hex dump of rawBytes
+                    const hexDump = Array.from(raw).map(b => b.toString(16).padStart(2, '0')).join(' ');
+
+                    return (
+                      <div
+                        key={idx}
+                        className="border border-red-500/40 bg-red-500/5 p-3.5 rounded-lg shadow-sm flex flex-col gap-2.5 transition-all"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                          <div className="flex items-center gap-2 text-xs font-mono">
+                            <span className="font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
+                              {origenLic || "???"} (Nodo {origenNod})
+                            </span>
+                            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
+                              {destLic || "???"} (Nodo {destNod})
+                            </span>
+                            <span className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded font-semibold animate-pulse">
+                              RAW / CORRUPTO
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
+                            <span>{dateStr}</span>
+                            <span className="bg-red-500/10 text-red-500 px-2 py-0.5 rounded font-semibold uppercase">
+                              TIPO {tipo}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Raw payload preview */}
+                        <div className="bg-background/50 border border-red-500/20 p-2.5 rounded font-mono text-xs text-foreground select-text whitespace-pre-wrap break-all">
+                          <div className="text-red-500 font-semibold text-[10px] mb-1">PREVIEW RAW (SIN CORREGIR):</div>
+                          {rawPayloadText || "[Vacío o no imprimible]"}
+                        </div>
+
+                        {/* Hex dump of entire packet */}
+                        <div className="bg-background/80 border border-border p-2 rounded font-mono text-[9px] text-muted-foreground/80 break-all select-all">
+                          <div className="text-[10px] font-semibold text-foreground/75 mb-1 font-sans">HEX DUMP COMPLETO:</div>
+                          {hexDump}
+                        </div>
+
+                        <div className="flex flex-wrap justify-between items-center text-[10px] font-mono text-red-600 dark:text-red-400 border-t border-red-500/10 pt-2 gap-2">
+                          <div className="flex gap-4">
+                            <span>Archivo ID: {archId}</span>
+                            <span>Sec: {secId}</span>
+                            <span>Bytes Extraídos: {raw.length}</span>
+                          </div>
+                          <span className="font-bold flex items-center gap-1">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            Fallo Reed-Solomon (No recuperable)
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const { frame, fecCorrected, errorsCorrected, crcValid } = pkt.result;
                   
                   // Convert payload to printable string
                   let payloadText: string;
