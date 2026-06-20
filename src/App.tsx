@@ -1583,7 +1583,11 @@ export default function App() {
                   onChange={(e) => setBaudRate(parseInt(e.target.value))}
                   className="w-full bg-input/10 border border-input rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                 >
+                  <option value={300}>300 Baudios (Ultra Robust)</option>
+                  <option value={600}>600 Baudios (Robust)</option>
                   <option value={1200}>1200 Baudios (Bell 202)</option>
+                  <option value={2400}>2400 Baudios (Fast Acoustic)</option>
+                  <option value={4800}>4800 Baudios (Acoustic Fast)</option>
                   <option value={9600}>9600 Baudios (High Speed)</option>
                 </select>
               </div>

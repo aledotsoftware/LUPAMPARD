@@ -1,4 +1,4 @@
-import { deserializeFrame, getFECSize } from "./protocol";
+import { deserializeFrame, getFECSize, getFrequencies } from "./protocol";
 import type { DeserializationResult } from "./protocol";
 
 export interface DemodulationOptions {
@@ -22,13 +22,7 @@ export function demodulateFSK(samples: Float32Array, options: DemodulationOption
   const sampleRate = options.sampleRate;
   const baudRate = options.baudRate;
   
-  let freqMark = 1200;
-  let freqSpace = 2200;
-  
-  if (baudRate === 9600) {
-    freqMark = 4800;
-    freqSpace = 9600;
-  }
+  const { mark: freqMark, space: freqSpace } = getFrequencies(baudRate);
 
   const samplesPerBit = Math.round(sampleRate / baudRate);
   const diff = new Float32Array(samples.length);

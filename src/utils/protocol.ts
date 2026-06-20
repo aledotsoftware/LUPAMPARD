@@ -316,3 +316,21 @@ export function decodeBase85(str: string): Uint8Array {
   }
   return new Uint8Array(out);
 }
+
+/**
+ * Returns the Mark and Space FSK frequencies for a given baud rate.
+ */
+export function getFrequencies(baudRate: number): { mark: number; space: number } {
+  if (baudRate === 9600) {
+    return { mark: 4800, space: 9600 };
+  }
+  if (baudRate === 4800) {
+    return { mark: 3000, space: 6000 };
+  }
+  if (baudRate === 2400) {
+    return { mark: 2400, space: 4800 };
+  }
+  // Default for 300, 600, 1200 Baud
+  return { mark: 1200, space: 2200 };
+}
+

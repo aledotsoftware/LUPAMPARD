@@ -1,5 +1,5 @@
 // LU-PAMPA V8 AFSK Modulator
-import { SYNC_BYTE } from "./protocol";
+import { SYNC_BYTE, getFrequencies } from "./protocol";
 // @ts-expect-error - lamejs has no official typings
 import lamejs from "./lame.min.js";
 
@@ -109,13 +109,7 @@ export function modulateBits(bits: number[], options: ModulationOptions): Float3
   const baudRate = options.baudRate;
   
   // Set frequencies based on baud rate
-  let freqMark = 1200; // Tone for bit 1
-  let freqSpace = 2200; // Tone for bit 0
-  
-  if (baudRate === 9600) {
-    freqMark = 4800;
-    freqSpace = 9600;
-  }
+  const { mark: freqMark, space: freqSpace } = getFrequencies(baudRate);
 
   const samplesPerBit = sampleRate / baudRate;
   const totalSamples = Math.ceil(bits.length * samplesPerBit);
