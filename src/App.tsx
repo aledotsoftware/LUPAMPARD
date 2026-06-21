@@ -19,7 +19,8 @@ import {
   Sparkles,
   ChevronDown,
   ChevronRight,
-  Folder
+  Folder,
+  Terminal
 } from "lucide-react";
 import {
   FrameType,
@@ -143,6 +144,7 @@ export default function App() {
 
   // Receiver State
   const [isListeningMic, setIsListeningMic] = useState<boolean>(false);
+  const [detectionLogs, setDetectionLogs] = useState<string[]>([]);
   const [receivedPackets, setReceivedPackets] = useState<DemodulatedPacket[]>([]);
   const [reassembledFiles, setReassembledFiles] = useState<Map<string, ReassembledFile>>(new Map());
   const [squelch, setSquelch] = useState<number>(0.02); // Minimum signal amplitude
@@ -776,7 +778,10 @@ export default function App() {
         const demodOptions = {
           baudRate,
           sampleRate: context.sampleRate,
-          useNRZI
+          useNRZI,
+          onDebugLog: (msg: string) => {
+            setDetectionLogs((prev) => [msg, ...prev].slice(0, 100));
+          }
         };
 
         const diffNew = demodulateFSK(demodInput, demodOptions);
@@ -900,7 +905,10 @@ export default function App() {
         const demodOptions = {
           baudRate,
           sampleRate: audioBuffer.sampleRate,
-          useNRZI
+          useNRZI,
+          onDebugLog: (msg: string) => {
+            setDetectionLogs((prev) => [msg, ...prev].slice(0, 100));
+          }
         };
 
         const diff = demodulateFSK(channelData, demodOptions);
@@ -1297,6 +1305,7 @@ export default function App() {
   // Clean console
   const handleClearConsole = () => {
     setReceivedPackets([]);
+    setDetectionLogs([]);
   };
 
   const getFrameTypeName = (type: FrameType): string => {
@@ -2075,6 +2084,53 @@ export default function App() {
               </div>
             </div>
           )}
+
+          {/* CONSOLA DE DIAGNÓSTICO DSP EN TIEMPO REAL */}
+          <div className="bg-card border border-border text-card-foreground p-5 rounded-lg shadow-sm flex flex-col gap-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Terminal className="h-5 w-5 text-primary" />
+                Consola de Diagnóstico DSP (Tiempo Real)
+              </h2>
+              {detectionLogs.length > 0 && (
+                <button
+                  onClick={() => setDetectionLogs([])}
+                  className="text-xs hover:text-destructive flex items-center gap-1 transition-colors text-muted-foreground font-mono bg-background hover:bg-muted border border-border px-2 py-1 rounded"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Limpiar Consola
+                </button>
+              )}
+            </div>
+
+            <div className="bg-black text-green-400 font-mono text-xs rounded-lg p-4 h-[250px] overflow-y-auto flex flex-col-reverse gap-1 border border-zinc-900 shadow-inner select-text">
+              {detectionLogs.length === 0 ? (
+                <div className="text-zinc-650 text-center py-20 italic">
+                  Esperando sincronización de bits... (Inicie la escucha con el micrófono o cargue un archivo WAV)
+                </div>
+              ) : (
+                detectionLogs.map((log, idx) => {
+                  let colorClass = "text-zinc-300";
+                  if (log.includes("¡Fallo") || log.includes("Fallo")) {
+                    colorClass = "text-red-400 font-semibold";
+                  } else if (log.includes("exitoso") || log.includes("Exitoso") || log.includes("con éxito")) {
+                    colorClass = "text-emerald-400 font-bold";
+                  } else if (log.includes("SYNC (0x7E)")) {
+                    colorClass = "text-yellow-400 font-semibold";
+                  } else if (log.includes("Cabecera leída")) {
+                    colorClass = "text-cyan-400";
+                  }
+                  
+                  return (
+                    <div key={idx} className="border-b border-zinc-900 pb-1 leading-relaxed">
+                      <span className="text-zinc-500 mr-2">[{new Date().toLocaleTimeString()}]</span>
+                      <span className={colorClass}>{log}</span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
 
           {/* TRÁFICO DE TRAMAS RECIBIDAS */}
           <div className="bg-card border border-border text-card-foreground p-5 rounded-lg shadow-sm flex-col flex gap-4 min-h-[300px]">

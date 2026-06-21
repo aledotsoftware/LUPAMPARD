@@ -145,32 +145,21 @@ export interface DeserializationResult {
  * Deserializes raw binary data into a LU-PAMPA frame.
  * Operates error correction (Reed-Solomon) and validates CRC16.
  */
-export function deserializeFrame(raw: Uint8Array): DeserializationResult | null {
+export function deserializeFrame(
+  raw: Uint8Array,
+  onDebugLog?: (msg: string) => void
+): DeserializationResult | null {
   // A minimum valid frame size must have at least the pre-FEC header fields (26 bytes) + FEC parity symbols.
-  // The smallest pre-FEC frame is 26 bytes (0 payload).
-  // The minimum FEC size for 26 bytes is getFECSize(26) = 6.
-  // So the minimum raw packet size is 26 + 6 = 32 bytes.
   if (raw.length < 32) {
+    onDebugLog?.(`¡Fallo! Tamaño de trama demasiado corto (${raw.length} bytes)`);
     return null;
   }
 
   // 1. Verify and extract sync byte
   if (raw[0] !== SYNC_BYTE) {
     // If the sync byte is corrupt, Reed-Solomon might still fix it if we assume raw starts at the sync byte.
-    // We let Reed-Solomon decode it.
   }
 
-  // To run Reed-Solomon decode, we need to know the length of the codeword (N).
-  // In our protocol, the layout depends on LONGITUD (at offset 23).
-  // However, if there are errors, how do we know the payload length and therefore the FEC size?
-  // We can look at the raw buffer length!
-  // The raw buffer length IS the total codeword length (N = preFecSize + nsym).
-  // Since nsym = Math.max(6, Math.ceil(preFecSize * 0.25)):
-  // We can solve for preFecSize:
-  // Let N = raw.length.
-  // If preFecSize * 0.25 <= 6, then nsym = 6, and preFecSize = N - 6.
-  // Else, nsym = Math.ceil(preFecSize * 0.25) => N = preFecSize + Math.ceil(preFecSize * 0.25).
-  // In either case, we can easily find preFecSize and nsym from N:
   let preFecSize = 0;
   let nsym = 0;
   
@@ -184,34 +173,41 @@ export function deserializeFrame(raw: Uint8Array): DeserializationResult | null 
   }
 
   if (preFecSize === 0 || nsym === 0) {
-    // Length mismatch (packet was truncated or padded incorrectly)
+    onDebugLog?.(`¡Fallo! Desalineación de tamaño (Codeword: ${raw.length} bytes, sin coincidencia de FEC)`);
     return null;
   }
+
+  onDebugLog?.(`Iniciando Decodificación: Codeword N=${raw.length}, Pre-FEC K=${preFecSize}, Símbolos RS=${nsym}`);
 
   // 2. Perform Reed-Solomon Error Correction
   const rsResult = rs_decode(raw, nsym);
   if (!rsResult) {
-    // Errors are uncorrectable
+    onDebugLog?.(`¡Fallo Reed-Solomon! Bloque de datos no recuperable (demasiados errores en el aire)`);
     return null;
   }
+
+  onDebugLog?.(`¡Reed-Solomon Exitoso! Corregidos ${rsResult.errors} errores (FEC Corregido: ${rsResult.corrected ? "Sí" : "No"})`);
 
   const decodedBuffer = rsResult.data; // Size is preFecSize
 
   // 3. Extract and validate CRC16
-  // CRC16 is at the last 2 bytes of the decodedBuffer
   const extractedCrc = (decodedBuffer[preFecSize - 2] << 8) | decodedBuffer[preFecSize - 1];
-  
-  // Calculate CRC16 over the data before the CRC16 field
   const dataToCrc = decodedBuffer.slice(0, preFecSize - 2);
   const calculatedCrc = crc16(dataToCrc);
   const crcValid = (extractedCrc === calculatedCrc);
+
+  if (crcValid) {
+    onDebugLog?.(`¡CRC16 verificado con éxito: 0x${calculatedCrc.toString(16).toUpperCase()}!`);
+  } else {
+    onDebugLog?.(`¡Fallo CRC16! Extraído: 0x${extractedCrc.toString(16).toUpperCase()}, Calculado: 0x${calculatedCrc.toString(16).toUpperCase()}`);
+  }
 
   // 4. Parse header fields from decodedBuffer
   let offset = 0;
 
   const sync = decodedBuffer[offset++];
   if (sync !== SYNC_BYTE) {
-    // Sync byte is wrong even after RS. Packet invalid.
+    onDebugLog?.(`¡Fallo! El byte de sincronización (SYNC) no coincide después de RS.`);
     return null;
   }
 
@@ -235,12 +231,14 @@ export function deserializeFrame(raw: Uint8Array): DeserializationResult | null 
 
   const payloadLen = decodedBuffer[offset++];
   
-  // Check payload length matches the remaining buffer space before CRC16
   if (payloadLen !== (preFecSize - 26)) {
-    return null; // Size mismatch
+    onDebugLog?.(`¡Fallo! Incoherencia de tamaño de payload: Longitud de cabecera = ${payloadLen}, Espacio disponible = ${preFecSize - 26}`);
+    return null;
   }
 
   const payload = decodedBuffer.slice(offset, offset + payloadLen);
+
+  onDebugLog?.(`¡Trama V8 decodificada con éxito! Origen=${origenLicencia} (${origenNodo}) -> Destino=${destinoLicencia} (${destinoNodo}), Archivo=${archivoId}, Sec=${secuenciaId}, Tipo=${tipo}`);
 
   return {
     frame: {

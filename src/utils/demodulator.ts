@@ -5,6 +5,7 @@ export interface DemodulationOptions {
   baudRate: number;   // 1200 or 9600
   sampleRate: number; // e.g. 44100
   useNRZI: boolean;   // Decode using NRZI + unstuffing or Direct FSK
+  onDebugLog?: (msg: string) => void;
 }
 
 export interface DemodulatedPacket {
@@ -161,6 +162,7 @@ export function extractPackets(
         }
 
         // Found actual frame start boundary
+        options.onDebugLog?.(`[Fase ${phaseOffset * 8}] Bandera SYNC (0x7E) detectada en bit ${bitIdx}`);
         const rawPacketBits: number[] = [];
         for (let p = 0; p < 8; p++) {
           rawPacketBits.push(syncPattern[p]);
@@ -213,6 +215,7 @@ export function extractPackets(
                 lenByte |= (rawPacketBits[startBit + b] << b);
               }
               expectedTotalBytes = 26 + lenByte + getFECSize(26 + lenByte);
+              options.onDebugLog?.(`[Fase ${phaseOffset * 8}] Cabecera leída: Payload=${lenByte} bytes, Trama total esperada=${expectedTotalBytes} bytes`);
             }
             if (expectedTotalBytes !== null && rawPacketBits.length >= expectedTotalBytes * 8) {
               while (rawPacketBits.length > expectedTotalBytes * 8) {
@@ -236,7 +239,7 @@ export function extractPackets(
           }
           
           // Attempt to deserialize (performs Reed-Solomon decoding and CRC16 verification)
-          const deserialized = deserializeFrame(rawBytes);
+          const deserialized = deserializeFrame(rawBytes, options.onDebugLog);
           if (deserialized) {
             // Deduplicate by licensing callsign + archivoId + secuenciaId
             const key = `${deserialized.frame.origenLicencia}_${deserialized.frame.archivoId}_${deserialized.frame.secuenciaId}`;
@@ -251,6 +254,7 @@ export function extractPackets(
             bitIdx += dataBitIdx - bitIdx - 8;
           } else {
             // RS decoding failed, but Sync was valid. Return it as a corrupted raw packet.
+            options.onDebugLog?.(`[Fase ${phaseOffset * 8}] Fallo de decodificación. Guardando paquete como RAW/CORRUPTO`);
             const key = `corrupt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
             packetsMap.set(key, {
               result: null,
