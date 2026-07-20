@@ -6,6 +6,8 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.3.1-06B6D4.svg?style=flat-square&logo=tailwindcss)](https://tailwindcss.com)
 [![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](#)
 
+🌐 **Demo en vivo:** [lu-pampard.tudexnetworks.com](https://lu-pampard.tudexnetworks.com)
+
 **LUPAMPARD** es la implementación web oficial del protocolo **LU-PAMPARD** (Lima Uniform - Protocolo Argentino de Mensajería para Aficionados de Radiodifusión Digital). Consiste en un módem digital de audio y sistema de comunicación acústica/radio basado en web que permite la transmisión y recepción de datos, balizas de telemetría y transferencia de archivos binarios utilizando modulación de frecuencia por desplazamiento de audio (**AFSK - Audio Frequency-Shift Keying**) con control de errores mediante **Reed-Solomon (FEC)** y validación **CRC-16**.
 
 La aplicación está diseñada para ejecutarse completamente en el navegador (lado del cliente) y se comunica a través de altavoces y micrófonos de forma acústica, o mediante transceptores de radio conectando el audio del dispositivo (cables de interfaz de radio). Es una herramienta ideal para demostraciones educativas de la capa física de comunicaciones, pruebas de radioafición y enlaces acústicos locales de datos.
