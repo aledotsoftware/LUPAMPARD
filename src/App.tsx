@@ -1331,7 +1331,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              LU-PAMPAR
+              LU-PAMPARD
               <span className="text-xs bg-primary/20 text-foreground px-2 py-0.5 rounded font-normal border border-border">
                 Radio Amateur Suite
               </span>

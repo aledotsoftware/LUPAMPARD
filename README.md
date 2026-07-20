@@ -1,4 +1,4 @@
-# 📻 LU-PAMPA (LU-PAMPAR) — Web-Based AFSK Modem & Protocol
+# 📻 LUPAMPARD — Web-Based AFSK Modem & LU-PAMPARD Protocol
 
 [![React Version](https://img.shields.io/badge/React-19.2.6-blue.svg?style=flat-square&logo=react)](https://react.dev)
 [![TypeScript Version](https://img.shields.io/badge/TypeScript-6.0.2-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
@@ -6,7 +6,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.3.1-06B6D4.svg?style=flat-square&logo=tailwindcss)](https://tailwindcss.com)
 [![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](#)
 
-**LU-PAMPA** (también conocido como **LU-PAMPAR**) es un módem digital de audio y protocolo de comunicación acústica/radio basado en web. Permite la transmisión y recepción de datos, balizas de telemetría y transferencia de archivos binarios utilizando modulación de frecuencia por desplazamiento de audio (**AFSK - Audio Frequency-Shift Keying**) con control de errores mediante **Reed-Solomon (FEC)** y validación **CRC-16**.
+**LUPAMPARD** es la implementación web oficial del protocolo **LU-PAMPARD** (Lima Uniform - Protocolo Argentino de Mensajería para Aficionados de Radiodifusión Digital). Consiste en un módem digital de audio y sistema de comunicación acústica/radio basado en web que permite la transmisión y recepción de datos, balizas de telemetría y transferencia de archivos binarios utilizando modulación de frecuencia por desplazamiento de audio (**AFSK - Audio Frequency-Shift Keying**) con control de errores mediante **Reed-Solomon (FEC)** y validación **CRC-16**.
 
 La aplicación está diseñada para ejecutarse completamente en el navegador (lado del cliente) y se comunica a través de altavoces y micrófonos de forma acústica, o mediante transceptores de radio conectando el audio del dispositivo (cables de interfaz de radio). Es una herramienta ideal para demostraciones educativas de la capa física de comunicaciones, pruebas de radioafición y enlaces acústicos locales de datos.
 
@@ -38,9 +38,9 @@ La aplicación está diseñada para ejecutarse completamente en el navegador (la
 
 ---
 
-## 📐 Especificación de la Trama (Capa de Enlace)
+## 📐 Especificación de la Trama (Capa de Enlace LU-PAMPARD)
 
-El formato de una trama **LU-PAMPA V8** está optimizado para transmitir pequeños fragmentos de datos de forma compacta y robusta. A continuación se muestra la distribución de bytes previa a la aplicación de Reed-Solomon (pre-FEC) y posterior (Codeword final):
+El formato de una trama **LU-PAMPARD** está optimizado para transmitir pequeños fragmentos de datos de forma compacta y robusta. A continuación se muestra la distribución de bytes previa a la aplicación de Reed-Solomon (pre-FEC) y posterior (Codeword final):
 
 ### Formato Pre-FEC (Bloque de Datos base de 26 bytes + longitud de payload)
 
@@ -78,7 +78,7 @@ p:/PAMPA/
 │   ├── App.tsx                 # Interfaz de usuario (React), estado del módem y bucle de audio
 │   ├── App.css                 # Estilos principales de la aplicación (Tailwind v4)
 │   ├── utils/
-│   │   ├── protocol.ts         # Serialización de tramas, CRC-16, codificación Base85
+│   │   ├── protocol.ts         # Serialización de tramas LU-PAMPARD, CRC-16, codificación Base85
 │   │   ├── reedsolomon.ts      # Aritmética de Galois Field 256 y decodificador Berlekamp-Massey
 │   │   ├── modulator.ts        # Modulador CPFSK, empaquetado de archivos WAV y MP3 (lamejs)
 │   │   ├── demodulator.ts      # Demodulación por filtros acoplados y alineación de reloj de bits
@@ -147,11 +147,11 @@ docker-compose down
 ### Opción 2: Docker CLI Directo
 1.  **Construir la imagen:**
     ```bash
-    docker build -t lu-pampa-app .
+    docker build -t LUPAMPARD .
     ```
 2.  **Ejecutar el contenedor:**
     ```bash
-    docker run -d -p 8080:3000 --name pampa-app lu-pampa-app
+    docker run -d -p 8080:3000 --name LUPAMPARD-app LUPAMPARD
     ```
 
 ---
@@ -194,7 +194,7 @@ docker-compose down
 
 *   **Vite + React 19 + TypeScript 6** — Framework, motor de UI e instrumentación tipada.
 *   **Tailwind CSS v4** — Framework de estilos y utilidades CSS en modo oscuro por defecto.
-*   **Web Audio API** — Generación de osciladores sintéticos para CPFSK y captura del micrófono para procesamiento pormatched-filter en tiempo real.
+*   **Web Audio API** — Generación de osciladores sintéticos para CPFSK y captura del micrófono para procesamiento por matched-filter en tiempo real.
 *   **jsPDF** — Biblioteca de generación estricta de documentos PDF del lado del cliente.
 *   **LameJS** — Compilación nativa de LAME en JavaScript para compresión MP3 en caliente de las tramas capturadas y transmitidas.
 *   **Lucide React** — Pack de iconos vectoriales modernos y estilizados.
