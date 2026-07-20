@@ -100,7 +100,7 @@ const WATERFALL_LUT = (() => {
 
 export default function App() {
   // --- STATE VARIABLES ---
-  
+
   // Theme state
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
 
@@ -111,13 +111,13 @@ export default function App() {
   const [destinoNodo, setDestinoNodo] = useState<number>(1);
   const [archivoId, setArchivoId] = useState<number>(0);
   const [secuenciaId, setSecuenciaId] = useState<number>(0);
-  
+
   // Frame payload type & data
   const [frameType, setFrameType] = useState<FrameType>(FrameType.TEXTO);
   const [textPayload, setTextPayload] = useState<string>("Hola Mundo!!");
   const [tokenPayload, setTokenPayload] = useState<number>(1234);
   const [telemetryPayload, setTelemetryPayload] = useState<string>("TEMP:24.5C,BATT:12.8V,RSSI:88");
-  
+
   // File Transfer State (Transmitter)
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileChunks, setFileChunks] = useState<FileChunk[]>([]);
@@ -213,10 +213,10 @@ export default function App() {
       const arrayBuffer = e.target.result as ArrayBuffer;
       const fileData = new Uint8Array(arrayBuffer);
       const totalBytes = fileData.length;
-      
+
       const chunks: FileChunk[] = [];
       const totalChunks = Math.ceil(totalBytes / chunkSize);
-      
+
       // Fragment 0: YMODEM-like metadata packet
       // METADATA:filename,sizeInBytes,totalChunks
       const metaText = `META:${selectedFile.name},${totalBytes},${totalChunks}`;
@@ -242,7 +242,7 @@ export default function App() {
           payloadBytes
         });
       }
-      
+
       setFileChunks(chunks);
     };
     reader.readAsArrayBuffer(selectedFile);
@@ -331,7 +331,7 @@ export default function App() {
     try {
       const frame = buildFrame();
       const rawFrame = serializeFrame(frame);
-      
+
       const options: ModulationOptions = {
         baudRate,
         sampleRate: 44100,
@@ -488,7 +488,7 @@ export default function App() {
         : `pampa_v8_rx_corrupt_${pkt.timestamp}.mp3`;
       a.download = fileName;
       a.click();
-      
+
       // Clean up the URL in a bit
       setTimeout(() => URL.revokeObjectURL(mp3Url), 10000);
     } catch (err) {
@@ -525,11 +525,11 @@ export default function App() {
     // Connect to volume control
     const gainNode = context.createGain();
     gainNode.gain.setValueAtTime(volume, context.currentTime);
-    
+
     // Connect to visual analyzer if playing back
     const analyser = context.createAnalyser();
     analyser.fftSize = 256;
-    
+
     source.connect(gainNode);
     gainNode.connect(analyser);
     gainNode.connect(context.destination);
@@ -679,7 +679,7 @@ export default function App() {
       // Wait until chunk finishes playing + burst delay
       const playDurationMs = (samples.length / 44100) * 1000;
       await new Promise((resolve) => setTimeout(resolve, playDurationMs + burstDelay));
-      
+
       // Stop checking if user cancelled (via ref)
       if (!isTransmittingRef.current) break;
     }
@@ -722,7 +722,7 @@ export default function App() {
       const context = audioContextRef.current;
 
       const source = context.createMediaStreamSource(stream);
-      
+
       // Analyser node for Spectrogram
       const analyser = context.createAnalyser();
       analyser.fftSize = 1024;
@@ -742,7 +742,7 @@ export default function App() {
 
       processor.onaudioprocess = (e) => {
         const inputData = e.inputBuffer.getChannelData(0);
-        
+
         // Calculate RMS amplitude to check against Squelch
         let sumSquare = 0;
         for (let i = 0; i < inputData.length; i++) {
@@ -767,7 +767,7 @@ export default function App() {
         const demodInput = new Float32Array(rawAudioBuffer.length + inputData.length);
         demodInput.set(rawAudioBuffer);
         demodInput.set(inputData, rawAudioBuffer.length);
-        
+
         // Save overlap tail for next run
         if (demodInput.length >= samplesPerBit) {
           rawAudioBuffer = demodInput.slice(demodInput.length - samplesPerBit);
@@ -822,7 +822,7 @@ export default function App() {
                 return false;
               });
               if (duplicate) return prev;
-              
+
               // Increment statistics
               setStats((s) => ({
                 ...s,
@@ -893,7 +893,7 @@ export default function App() {
       try {
         if (!event.target?.result) return;
         const arrayBuffer = event.target.result as ArrayBuffer;
-        
+
         // Use OfflineAudioContext to decode reliably on all platforms
         const OfflineAudioCtx = window.OfflineAudioContext || (window as unknown as { webkitOfflineAudioContext: typeof OfflineAudioContext }).webkitOfflineAudioContext;
         const tempCtx = new OfflineAudioCtx(1, 44100, 44100);
@@ -1171,7 +1171,7 @@ export default function App() {
 
       alert(`Emitiendo solicitud NACK para retransmitir fragmentos: ${missingSeqs.join(", ")}`);
       handlePlayAudio(samples);
-      
+
       setStats((s) => ({ ...s, sent: s.sent + 1 }));
     } catch (e) {
       alert("Error al emitir solicitud NACK: " + (e as Error).message);
@@ -1186,7 +1186,7 @@ export default function App() {
 
     try {
       const parts: Uint8Array[] = [];
-      
+
       // Determine how many chunks to loop through
       // If metadata was lost, loop up to the maximum received sequence ID
       let maxSeqId = 0;
@@ -1217,8 +1217,8 @@ export default function App() {
       }
 
       // Truncate to exact original size if specified and complete
-      const exactBin = (fileObj.totalSize > 0 && !forcePartial) 
-        ? finalBin.slice(0, fileObj.totalSize) 
+      const exactBin = (fileObj.totalSize > 0 && !forcePartial)
+        ? finalBin.slice(0, fileObj.totalSize)
         : finalBin;
 
       const blob = new Blob([exactBin], { type: "application/octet-stream" });
@@ -1322,7 +1322,7 @@ export default function App() {
   // UI Components helpers
   return (
     <div className={`min-h-screen transition-colors duration-200 bg-background text-foreground flex flex-col p-4 md:p-8`}>
-      
+
       {/* HEADER SECTION */}
       <header className="flex flex-col md:flex-row justify-between items-center pb-6 border-b border-border mb-8 gap-4">
         <div className="flex items-center gap-3">
@@ -1331,13 +1331,13 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              LU-PAMPA V8
+              LU-PAMPAR
               <span className="text-xs bg-primary/20 text-foreground px-2 py-0.5 rounded font-normal border border-border">
                 Radio Amateur Suite
               </span>
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Protocolo Argentino de Mensajería para Aficionados (Alejandro N. Avellaneda)
+              Protocolo Argentino de Mensajería para Aficionados de Radiodifusión Digital
             </p>
           </div>
         </div>
@@ -1383,7 +1383,7 @@ export default function App() {
 
       {/* DASHBOARD GRID */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-        
+
         {/* PANEL IZQUIERDO: TRANSMISOR (5 columnas) */}
         <section className="xl:col-span-5 bg-card border border-border text-card-foreground p-5 rounded-lg shadow-sm flex flex-col gap-6">
           <div className="flex items-center justify-between border-b border-border pb-3">
@@ -1481,11 +1481,10 @@ export default function App() {
                 <button
                   key={item.type}
                   onClick={() => setFrameType(item.type)}
-                  className={`text-[11px] font-medium py-1 px-1.5 rounded transition-all ${
-                    frameType === item.type
-                      ? "bg-primary text-primary-foreground shadow"
-                      : "hover:bg-muted text-muted-foreground"
-                  }`}
+                  className={`text-[11px] font-medium py-1 px-1.5 rounded transition-all ${frameType === item.type
+                    ? "bg-primary text-primary-foreground shadow"
+                    : "hover:bg-muted text-muted-foreground"
+                    }`}
                 >
                   {item.label}
                 </button>
@@ -1559,7 +1558,7 @@ export default function App() {
                     </span>
                   )}
                 </div>
-                
+
                 <div className="flex gap-2 items-center">
                   <label className="flex items-center justify-center border border-dashed border-border rounded-md bg-background px-4 py-2 hover:bg-muted cursor-pointer transition-colors w-full text-xs text-muted-foreground">
                     <FolderOpen className="h-4 w-4 mr-2" />
@@ -1816,7 +1815,7 @@ export default function App() {
 
         {/* PANEL DERECHO: RECEPTOR (7 columnas) */}
         <section className="xl:col-span-7 flex flex-col gap-6">
-          
+
           {/* CONTROL DE ENTRADA Y CASCADA DSP */}
           <div className="bg-card border border-border text-card-foreground p-5 rounded-lg shadow-sm flex flex-col gap-5">
             <div className="flex items-center justify-between border-b border-border pb-3">
@@ -1835,7 +1834,7 @@ export default function App() {
                     className="sr-only"
                   />
                 </label>
-                
+
                 {isListeningMic ? (
                   <button
                     onClick={handleStopListening}
@@ -1954,11 +1953,11 @@ export default function App() {
                         <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
                           Estructura de Tramos (Vista de Árbol):
                         </span>
-                        
+
                         {file.totalChunks > 0 ? (
                           <div className="bg-black/20 dark:bg-black/35 border border-border/60 rounded-md p-1 font-mono text-[11px]">
                             {/* Folder Row */}
-                            <div 
+                            <div
                               onClick={() => toggleFileExpansion(key)}
                               className="flex items-center justify-between py-1 px-2 rounded hover:bg-muted/50 cursor-pointer transition-colors"
                             >
@@ -2013,7 +2012,7 @@ export default function App() {
                                   const chunkId = idx + 1;
                                   const received = file.receivedChunks.has(chunkId);
                                   const state = file.chunkStates?.get(chunkId);
-                                  
+
                                   return (
                                     <div key={chunkId} className="flex items-center justify-between py-0.5 px-1.5 rounded hover:bg-muted/20 transition-colors">
                                       <div className="flex items-center gap-1.5 text-foreground/80">
@@ -2120,7 +2119,7 @@ export default function App() {
                   } else if (log.includes("Cabecera leída")) {
                     colorClass = "text-cyan-400";
                   }
-                  
+
                   return (
                     <div key={idx} className="border-b border-zinc-900 pb-1 leading-relaxed">
                       <span className="text-zinc-500 mr-2">[{new Date().toLocaleTimeString()}]</span>
@@ -2158,12 +2157,12 @@ export default function App() {
               ) : (
                 receivedPackets.map((pkt, idx) => {
                   const dateStr = new Date(pkt.timestamp).toLocaleTimeString();
-                  
+
                   if (!pkt.result) {
                     // Reed-Solomon failed: totalmente corrupto.
                     // Extraemos cabeceras del rawBytes directamente
                     const raw = pkt.rawBytes;
-                    
+
                     // Helper simple para parsear callsign sin error correction
                     const parseCallsignDirect = (arr: Uint8Array, start: number) => {
                       let str = "";
@@ -2172,29 +2171,29 @@ export default function App() {
                       }
                       return str.trim().toUpperCase();
                     };
-                    
+
                     const origenLic = raw.length > 8 ? parseCallsignDirect(raw, 1) : "???";
                     const origenNod = raw.length > 10 ? (raw[8] << 8) | raw[9] : 0;
                     const destLic = raw.length > 17 ? parseCallsignDirect(raw, 10) : "???";
                     const destNod = raw.length > 19 ? (raw[17] << 8) | raw[18] : 0;
-                    
+
                     const archId = raw.length > 19 ? raw[19] : 0;
                     const secId = raw.length > 22 ? (raw[21] << 8) | raw[22] : 0;
                     const tipo = raw.length > 23 ? raw[23] : 0;
                     const payloadLen = raw.length > 24 ? raw[24] : 0;
-                    
+
                     // Extract payload raw bytes
-                    const rawPayload = raw.length > 25 
-                      ? raw.slice(25, Math.min(25 + payloadLen, raw.length - 2)) 
+                    const rawPayload = raw.length > 25
+                      ? raw.slice(25, Math.min(25 + payloadLen, raw.length - 2))
                       : new Uint8Array(0);
-                      
+
                     let rawPayloadText: string;
                     try {
                       rawPayloadText = new TextDecoder().decode(rawPayload).replace(/[^\x20-\x7E\n]/g, ".");
                     } catch {
                       rawPayloadText = "[Datos Binarios Corruptos]";
                     }
-                    
+
                     // Hex dump of rawBytes
                     const hexDump = Array.from(raw).map(b => b.toString(16).padStart(2, '0')).join(' ');
 
@@ -2253,14 +2252,14 @@ export default function App() {
                   }
 
                   const { frame, fecCorrected, errorsCorrected, crcValid } = pkt.result;
-                  
+
                   // Convert payload to printable string
                   let payloadText: string;
                   if (frame.tipo === FrameType.TOKEN) {
                     const id = (frame.payload[0] << 8) | frame.payload[1];
                     payloadText = `TOKEN ID: ${id}`;
                   } else {
-                    payloadText = new TextEncoder().encode(new TextDecoder().decode(frame.payload)).length > 0 
+                    payloadText = new TextEncoder().encode(new TextDecoder().decode(frame.payload)).length > 0
                       ? new TextDecoder().decode(frame.payload)
                       : "[Vacío]";
                   }
@@ -2268,13 +2267,12 @@ export default function App() {
                   return (
                     <div
                       key={idx}
-                      className={`border p-3.5 rounded-lg shadow-sm flex flex-col gap-2.5 transition-all bg-card ${
-                        !crcValid
-                          ? "border-destructive/30 bg-destructive/5"
-                          : fecCorrected
+                      className={`border p-3.5 rounded-lg shadow-sm flex flex-col gap-2.5 transition-all bg-card ${!crcValid
+                        ? "border-destructive/30 bg-destructive/5"
+                        : fecCorrected
                           ? "border-yellow-500/30 bg-yellow-500/5"
                           : "border-border hover:border-muted-foreground/30"
-                      }`}
+                        }`}
                     >
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                         {/* Callsign Routing Info */}
